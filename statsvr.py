@@ -20,14 +20,15 @@
 
 """
 import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
+import importlib
 import logging
 import re
 import socket
 import urllib
 import urllib2
+
+importlib.reload(sys)
+sys.setdefaultencoding('utf-8')
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind('', 8125)
@@ -56,7 +57,7 @@ while 1:
     data, _ = sock.recvfrom(BUFFER_SIZE)
     query = []
     for metric in data.rstrip('\n').split('\n'):
-        match = re.match('\A([^:]+):([^|]+)\|(.+)', metric)
+        match = re.match(r'\A([^:]+):([^|]+)\|(.+)', metric)
         if not match:
             logging.error('Discarding invalid metric %s', metric)
             continue

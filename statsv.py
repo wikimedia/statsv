@@ -28,10 +28,7 @@ import re
 import socket
 import argparse
 
-try:
-    import urllib.parse as urlparse # Python 3
-except ImportError:
-    import urlparse # Python 2
+import urllib.parse as urlparse
 
 from kafka import KafkaConsumer
 
@@ -45,12 +42,14 @@ ap.add_argument(
 )
 ap.add_argument(
     '--brokers',
-    help='Comma separated string of kafka brokers: Default: localhost:9092 or localhost:9093 (based on --security-protocol)',
+    help='Comma separated string of kafka brokers: '
+    'Default: localhost:9092 or localhost:9093 (based on --security-protocol)',
     default=None
 )
 ap.add_argument(
     '--security-protocol',
-    help=' Protocol used to communicate with brokers. Valid values are: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: PLAINTEXT',
+    help=' Protocol used to communicate with brokers. '
+    'Valid values are: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: PLAINTEXT',
     choices=('PLAINTEXT', 'SSL', 'SASL_PLAINTEXT', 'SASL_SSL'),
     default='PLAINTEXT'
 )
@@ -139,8 +138,8 @@ kafka_consumer_timeout_seconds = args.consumer_timeout_seconds
 SUPPORTED_METRIC_TYPES = ('c', 'g', 'ms')
 
 
-
 SOCK_CLOEXEC = getattr(socket, 'SOCK_CLOEXEC', 0x80000)
+
 
 class Watchdog:
     """
@@ -193,13 +192,13 @@ def process_queue(q):
         raw_data = q.get()
         try:
             data = json.loads(raw_data.decode('utf-8'))
-        except:
+        except:  # noqa: E722
             logging.exception(raw_data)
         try:
             query_string = data['uri_query'].lstrip('?')
             for metric_name, value in urlparse.parse_qsl(query_string):
                 metric_value, metric_type = re.search(
-                        '^(\d+)([a-z]+)$', value).groups()
+                        r'^(\d+)([a-z]+)$', value).groups()
                 assert metric_type in SUPPORTED_METRIC_TYPES
                 statsd_message = '%s:%s|%s' % (
                         metric_name, metric_value, metric_type)
@@ -261,7 +260,7 @@ try:
             watchdog.notify()
     # If we reach this line, kafka_consumer_timeout_seconds elapsed with no events received.
     raise RuntimeError('No messages received in %d seconds.' % kafka_consumer_timeout_seconds)
-except Exception as e:
+except Exception:
     logging.exception("Caught exception, aborting.")
 finally:
     queue.close()

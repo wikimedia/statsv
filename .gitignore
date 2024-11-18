@@ -1,0 +1,5 @@
+# Development
+.tox/
+
+# Deployment
+scap/log
