@@ -76,8 +76,13 @@ ap.add_argument(
 )
 ap.add_argument(
     '--statsd',
-    help='statsd host:port. Default: statsd:8125',
+    help='Target host:port for StatsD format. Intended to support Graphite/statsite. Default: statsd:8125',
     default='statsd:8125'
+)
+ap.add_argument(
+    '--dogstatsd',
+    help='Target host:port for DogStatsD format. Intended to support Prometheus via statsd-exporter.',
+    default=None
 )
 ap.add_argument(
     '--workers',
@@ -121,6 +126,11 @@ statsd_addr = args.statsd.split(':')
 if len(statsd_addr) > 1:
     statsd_addr[1] = int(statsd_addr[1])
 statsd_addr = tuple(statsd_addr)
+
+dogstatsd_addr = args.dogstatsd.split(':') if args.dogstatsd else None
+if dogstatsd_addr:
+    dogstatsd_addr[1] = int(dogstatsd_addr[1])
+    dogstatsd_addr = tuple(dogstatsd_addr)
 
 worker_count = args.workers
 
@@ -185,17 +195,67 @@ def process_queue(q):
             logging.exception(raw_data)
         try:
             query_string = data['uri_query'].lstrip('?')
-            for metric_name, value in urlparse.parse_qsl(query_string):
-                metric_value, metric_type = re.search(
-                        r'^(\d+)([a-z]+)$', value).groups()
-                assert metric_type in SUPPORTED_METRIC_TYPES
-                statsd_message = '%s:%s|%s' % (
-                        metric_name, metric_value, metric_type)
+            # == DogStatsD/Prometheus ==
+            #
+            # This only allows metrics in the  `mediawiki_` namespace, and strictly requires
+            # valid metric/label names per the Prometheus/OpenMetrics spec (A-Z, a-z, 0-9, _).
+            #
+            # * https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format
+            # * https://github.com/prometheus/OpenMetrics/blob/v1.0.0/specification/OpenMetrics.md#abnf
+            # * https://www.rfc-editor.org/rfc/rfc5234#appendix-B.1
+            #
+            # Example:
+            # ```
+            # mediawiki_example_total:1|c%0Amediawiki_example_total:42|c|%23key1:value1,key2:value2
+            #
+            # (
+            #   'mediawiki_example_total:1|c'
+            #   'mediawiki_example_total:42|c|#key1:value1,key2:value2'
+            # )
+            # ```
+            #
+            # == Legacy StatsD/Graphite ==
+            #
+            # This has no enforced naming scheme and no enforced illegal characters,
+            # although they generally start with "MediaWiki.", and can be relied upon
+            # to include at least `=` as separator between each name and value,
+            # as parsed by `urlparse.parse_qsl`.
+            #
+            # Example:
+            # ```
+            # MediaWiki.example=1c&MediaWiki.example.value1.value2=42c
+            # (
+            #   ('MediaWiki.example', '1c'),
+            #   ('MediaWiki.example.value1.value2', '42c')
+            # )
+            # ```
+            if '=' not in query_string:
+                lines = urlparse.unquote(query_string).split('\n')
+                for dogstatsd_message in lines:
+                    # Discard data that obviously bypassed statsd.js with unexpected chars
+                    # to prevent pollution, and avoid injecting other lines/instructions.
+                    # No full grammar validation as Prometheus statsd_exporter already
+                    # normalizes/discards for us as-needed.
+                    if re.match(r'^mediawiki_[A-Za-z0-9_]+_total:[A-Za-z0-9_|#:,]+$', dogstatsd_message):
+                        if dry_run:
+                            logging.info(dogstatsd_message)
+                        elif dogstatsd_addr:
+                            sock.sendto(dogstatsd_message.encode('utf-8'), dogstatsd_addr)
+                    else:
+                        logging.debug('Discarded dogstatsd message: "%s"' % dogstatsd_message)
+            else:
+                lines = urlparse.parse_qsl(query_string)
+                for metric_name, value in lines:
+                    metric_value, metric_type = re.search(
+                            r'^(\d+)([a-z]+)$', value).groups()
+                    assert metric_type in SUPPORTED_METRIC_TYPES
+                    statsd_message = '%s:%s|%s' % (
+                            metric_name, metric_value, metric_type)
 
-                if dry_run:
-                    logging.info(statsd_message)
-                else:
-                    sock.sendto(statsd_message.encode('utf-8'), statsd_addr)
+                    if dry_run:
+                        logging.info(statsd_message)
+                    else:
+                        sock.sendto(statsd_message.encode('utf-8'), statsd_addr)
 
         except (AssertionError, AttributeError, KeyError):
             pass

@@ -34,7 +34,7 @@ assert_equals() {
 
 # Test: Fixture generates expected output
 
-out=$(python statsv.py --dry-run --workers 1 --kafka-fixture test/fixture_in.txt 2>&1)
+out=$(python statsv.py --dry-run --log-level DEBUG --workers 1 --kafka-fixture test/fixture_in.txt 2>&1)
 # - strip variable BASE
 # - strip variable datetime
 # - strip line number
