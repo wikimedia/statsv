@@ -1,0 +1,14 @@
+Spawning 1 workers to process statsv messages
+Starting statsv Kafka consumer.
+MediaWiki.foo:1|c
+MediaWiki.foo:20|c
+MediaWiki.quux:21|ms
+MediaWiki.foo:50|c
+MediaWiki.recover_after_invalid:60|c
+MediaWiki.quux:61|ms
+Reached end of fixture file.
+Caught exception, aborting.
+Traceback (most recent call last):
+File "/statsv/statsv.py", line 0, in statsv_main
+  raise RuntimeError('No messages received in %d seconds.' % args.consumer_timeout_seconds)
+RuntimeError: No messages received in 60 seconds.

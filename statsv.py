@@ -27,6 +27,7 @@ import os
 import re
 import socket
 import sys
+import time
 
 import urllib.parse as urlparse
 
@@ -66,6 +67,11 @@ ap.add_argument(
 ap.add_argument(
     '--api-version',
     help='Kafka API version override. Defaults to autodetection.',
+    default=None
+)
+ap.add_argument(
+    '--kafka-fixture',
+    help='Optional fixture file to read instead of consuming from Kafka.',
     default=None
 )
 ap.add_argument(
@@ -199,6 +205,15 @@ def get_statsv_reader(args):
     '''
     Returns: a string generator where each message is a wmf.webrequest JSON dictionary
     '''
+    if args.kafka_fixture:
+        with open(args.kafka_fixture) as fixture_file:
+            for line in fixture_file:
+                yield line
+
+        time.sleep(1)
+        logging.info('Reached end of fixture file.')
+        return
+
     if args.brokers is None:
         if args.security_protocol in ("SSL", "SASL_SSL"):
             kafka_bootstrap_servers = ("localhost:9093",)
@@ -245,27 +260,32 @@ def get_statsv_reader(args):
         consumer.close()
 
 
-# Spawn worker_count workers to process incoming varnshkafka statsv messages.
-queue = multiprocessing.Queue()
+def statsv_main(args):
+    # Spawn worker_count workers to process incoming varnshkafka statsv messages.
+    queue = multiprocessing.Queue()
 
-logging.info('Spawning %d workers to process statsv messages' % worker_count)
-for _ in range(worker_count):
-    worker = multiprocessing.Process(target=process_queue, args=(queue,))
-    worker.daemon = True
-    worker.start()
+    logging.info('Spawning %d workers to process statsv messages' % worker_count)
+    for _ in range(worker_count):
+        worker = multiprocessing.Process(target=process_queue, args=(queue,))
+        worker.daemon = True
+        worker.start()
 
-watchdog = Watchdog()
+    watchdog = Watchdog()
 
-logging.info('Starting statsv Kafka consumer.')
-# Consume messages from Kafka and put them onto the queue.
-try:
-    for message in get_statsv_reader(args):
-        queue.put(message)
-        watchdog.notify()
+    logging.info('Starting statsv Kafka consumer.')
+    # Consume messages from Kafka and put them onto the queue.
+    try:
+        for message in get_statsv_reader(args):
+            queue.put(message)
+            watchdog.notify()
 
-    # If we arrive here, consumer_timeout_seconds elapsed with no events received.
-    raise RuntimeError('No messages received in %d seconds.' % args.consumer_timeout_seconds)
-except Exception:
-    logging.exception("Caught exception, aborting.")
-finally:
-    queue.close()
+        # If we arrive here, consumer_timeout_seconds elapsed with no events received.
+        raise RuntimeError('No messages received in %d seconds.' % args.consumer_timeout_seconds)
+    except Exception:
+        logging.exception("Caught exception, aborting.")
+    finally:
+        queue.close()
+
+
+if __name__ == '__main__':
+    statsv_main(args)

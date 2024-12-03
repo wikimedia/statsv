@@ -1,0 +1,9 @@
+{ "uri_query": "?MediaWiki.foo=1c" }
+{ "uri_query": "?MediaWiki.foo=20c&MediaWiki.quux=21ms" }
+{ "uri_query": "", "@comment": "empty string" }
+{ "@comment": "missing uri_query" }
+{ "uri_query": "?MediaWiki.bad.unit=30x" }
+{ "uri_query": "?MediaWiki.bad.unit=32x&MediaWiki.foo=33c", "@comment": "bad unit discards rest of message" }
+{ "uri_query": "?MediaWiki.no_equals_value_single" }
+{ "uri_query": "?MediaWiki.no_equals_value_multi&MediaWiki.foo=50c" }
+{ "uri_query": "?MediaWiki.recover_after_invalid=60c&MediaWiki.quux=61ms" }
