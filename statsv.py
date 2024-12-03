@@ -19,14 +19,14 @@
   limitations under the License.
 
 """
-import sys
+import argparse
 import json
 import logging
 import multiprocessing
 import os
 import re
 import socket
-import argparse
+import sys
 
 import urllib.parse as urlparse
 
@@ -118,18 +118,6 @@ statsd_addr = tuple(statsd_addr)
 
 worker_count = args.workers
 
-if args.brokers is None:
-    if args.security_protocol in ("SSL", "SASL_SSL"):
-        kafka_bootstrap_servers = ("localhost:9093",)
-    else:
-        kafka_bootstrap_servers = ("localhost:9092",)
-else:
-    kafka_bootstrap_servers = tuple(args.brokers.split(','))
-
-kafka_topics = args.topics.split(',')
-kafka_consumer_group = args.consumer_group
-kafka_consumer_timeout_seconds = args.consumer_timeout_seconds
-
 SUPPORTED_METRIC_TYPES = ('c', 'g', 'ms')
 
 
@@ -186,7 +174,7 @@ def process_queue(q):
     while 1:
         raw_data = q.get()
         try:
-            data = json.loads(raw_data.decode('utf-8'))
+            data = json.loads(raw_data)
         except:  # noqa: E722
             logging.exception(raw_data)
         try:
@@ -207,6 +195,56 @@ def process_queue(q):
             pass
 
 
+def get_statsv_reader(args):
+    '''
+    Returns: a string generator where each message is a wmf.webrequest JSON dictionary
+    '''
+    if args.brokers is None:
+        if args.security_protocol in ("SSL", "SASL_SSL"):
+            kafka_bootstrap_servers = ("localhost:9093",)
+        else:
+            kafka_bootstrap_servers = ("localhost:9092",)
+    else:
+        kafka_bootstrap_servers = tuple(args.brokers.split(','))
+
+    kafka_topics = args.topics.split(',')
+
+    if args.api_version is not None:
+        # If api_version is given, don't try to autodetect the api version. If the
+        # consumer supports higher versions than what the broker is running, it
+        # ends up throwing errors on the server when probing.
+        kafka_api_version = tuple([int(i) for i in args.api_version.split('.')])
+    else:
+        kafka_api_version = None
+
+    # Create our Kafka Consumer instance.
+    consumer = KafkaConsumer(
+        bootstrap_servers=kafka_bootstrap_servers,
+        security_protocol=args.security_protocol,
+        ssl_cafile=args.ssl_cafile,
+        # Our Kafka brokers currently use the cluster name instead of hostname as
+        # CN in their TLS certificates.
+        ssl_check_hostname=False,
+        group_id=args.consumer_group,
+        auto_offset_reset='latest',
+        # statsd metrics don't make sense if they lag, so disable commits to avoid
+        # resuming at historical committed offset.
+        enable_auto_commit=False,
+        api_version=kafka_api_version,
+        consumer_timeout_ms=args.consumer_timeout_seconds * 1000
+    )
+    consumer.subscribe(kafka_topics)
+
+    logging.info('Starting statsv Kafka consumer.')
+
+    try:
+        for message in consumer:
+            if message is not None:
+                yield message.value.decode('utf-8')
+    finally:
+        consumer.close()
+
+
 # Spawn worker_count workers to process incoming varnshkafka statsv messages.
 queue = multiprocessing.Queue()
 
@@ -216,47 +254,18 @@ for _ in range(worker_count):
     worker.daemon = True
     worker.start()
 
-
-if args.api_version is not None:
-    # If api_version is given, don't try to autodetect the api version. If the
-    # consumer supports higher versions than what the broker is running, it
-    # ends up throwing errors on the server when probing.
-    kafka_api_version = tuple([int(i) for i in args.api_version.split('.')])
-else:
-    kafka_api_version = None
-
-# Create our Kafka Consumer instance.
-consumer = KafkaConsumer(
-    bootstrap_servers=kafka_bootstrap_servers,
-    security_protocol=args.security_protocol,
-    ssl_cafile=args.ssl_cafile,
-    # Our Kafka brokers currently use the cluster name instead of hostname as
-    # CN in their TLS certificates.
-    ssl_check_hostname=False,
-    group_id=kafka_consumer_group,
-    auto_offset_reset='latest',
-    # statsd metrics don't make sense if they lag, so disable commits to avoid
-    # resuming at historical committed offset.
-    enable_auto_commit=False,
-    api_version=kafka_api_version,
-    consumer_timeout_ms=kafka_consumer_timeout_seconds * 1000
-)
-consumer.subscribe(kafka_topics)
-
 watchdog = Watchdog()
 
 logging.info('Starting statsv Kafka consumer.')
 # Consume messages from Kafka and put them onto the queue.
 try:
-    for message in consumer:
-        if message is not None:
-            queue.put(message.value)
-            watchdog.notify()
+    for message in get_statsv_reader(args):
+        queue.put(message)
+        watchdog.notify()
 
     # If we arrive here, consumer_timeout_seconds elapsed with no events received.
-    raise RuntimeError('No messages received in %d seconds.' % kafka_consumer_timeout_seconds)
+    raise RuntimeError('No messages received in %d seconds.' % args.consumer_timeout_seconds)
 except Exception:
     logging.exception("Caught exception, aborting.")
 finally:
     queue.close()
-    consumer.close()
