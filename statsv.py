@@ -37,60 +37,41 @@ ap = argparse.ArgumentParser(
 )
 ap.add_argument(
     '--topics',
-    help='Comma separated list of Kafka topics from which to consume.  Default: statsv',
+    help='Kafka topics from which to consume, comma-separated.  Default: statsv',
+    default='statsv'
+)
+ap.add_argument(
+    '--consumer-group',
+    help='Kafka consumer group. Default: statsv',
     default='statsv'
 )
 ap.add_argument(
     '--brokers',
-    help='Comma separated string of kafka brokers: '
+    help='Kafka brokers, comma-separated.'
     'Default: localhost:9092 or localhost:9093 (based on --security-protocol)',
     default=None
 )
 ap.add_argument(
     '--security-protocol',
-    help=' Protocol used to communicate with brokers. '
+    help='Kafka broker protocol. '
     'Valid values are: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Default: PLAINTEXT',
     choices=('PLAINTEXT', 'SSL', 'SASL_PLAINTEXT', 'SASL_SSL'),
     default='PLAINTEXT'
 )
 ap.add_argument(
     '--ssl-cafile',
-    help='Optional filename of certificate authority file to use in certificate verification.',
+    help='Optional certificate authority file to use with Kafka connection.',
     default=None
 )
 ap.add_argument(
-    '--consumer-group',
-    help='Consumer group to register with Kafka. Default: statsv',
-    default='statsv'
+    '--api-version',
+    help='Kafka API version override. Defaults to autodetection.',
+    default=None
 )
 ap.add_argument(
     '--statsd',
     help='statsd host:port. Default: statsd:8125',
     default='statsd:8125'
-)
-ap.add_argument(
-    '--verbose',
-    help='If true, statsd metrics will be logged at INFO level. Default: False',
-    action='store_true',
-    default=False
-)
-ap.add_argument(
-    '--dry-run',
-    help='If true, metrics will not be sent to statsd. Default: False',
-    action='store_true',
-    default=False
-)
-ap.add_argument(
-    '--log-level',
-    help='Logging level. Default: INFO',
-    default='INFO'
-)
-ap.add_argument(
-    '--consumer-timeout-seconds',
-    help='If the Kafka consumer does not receive a message in this amount of time, '
-    'it will timeout and this process will exit. Default: 60',
-    type=int,
-    default=60
 )
 ap.add_argument(
     '--workers',
@@ -100,8 +81,23 @@ ap.add_argument(
     default=max(1, multiprocessing.cpu_count() // 2)
 )
 ap.add_argument(
-    '--api-version',
-    default=None
+    '--consumer-timeout-seconds',
+    help='Exit the process after the Kafka consumer does not receive a message in this amount of. '
+    'Default: 60',
+    type=int,
+    default=60
+)
+ap.add_argument(
+    '--dry-run',
+    help='If true, nothing will be sent to statsd. '
+    'Instead, each statsd output line is logged at the INFO level. Default: False',
+    action='store_true',
+    default=False
+)
+ap.add_argument(
+    '--log-level',
+    help='Logging level. Default: INFO',
+    default='INFO'
 )
 
 args = ap.parse_args()
@@ -112,7 +108,6 @@ logging.basicConfig(stream=sys.stderr, level=args.log_level,
 # Set kafka module logging level to INFO
 logging.getLogger("kafka").setLevel(logging.INFO)
 
-verbose = args.verbose
 dry_run = args.dry_run
 
 # parse args for configuration
@@ -203,10 +198,9 @@ def process_queue(q):
                 statsd_message = '%s:%s|%s' % (
                         metric_name, metric_value, metric_type)
 
-                if (verbose):
+                if dry_run:
                     logging.info(statsd_message)
-
-                if (not dry_run):
+                else:
                     sock.sendto(statsd_message.encode('utf-8'), statsd_addr)
 
         except (AssertionError, AttributeError, KeyError):
@@ -258,7 +252,8 @@ try:
         if message is not None:
             queue.put(message.value)
             watchdog.notify()
-    # If we reach this line, kafka_consumer_timeout_seconds elapsed with no events received.
+
+    # If we arrive here, consumer_timeout_seconds elapsed with no events received.
     raise RuntimeError('No messages received in %d seconds.' % kafka_consumer_timeout_seconds)
 except Exception:
     logging.exception("Caught exception, aborting.")
