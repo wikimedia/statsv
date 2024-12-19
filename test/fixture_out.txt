@@ -11,6 +11,9 @@ MediaWiki.quux:61|ms
 Discarded dogstatsd message: "something_non_mediawiki_total:1|c"
 Discarded dogstatsd message: "mediawiki_missing_total_suffix:1|c"
 mediawiki_after_bad_name_total:1|c
+Discarded dogstatsd message: "mediawiki_example_total:|c"
+Discarded dogstatsd message: "mediawiki_example_total:1|g"
+Discarded dogstatsd message: "mediawiki_example_total:1|ms"
 mediawiki_example_total:1|c
 mediawiki_example_total:42|c|#key1:value1,key2:value2
 Discarded dogstatsd message: "mediawiki_foo_rows:200|g"

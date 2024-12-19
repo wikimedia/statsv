@@ -8,6 +8,9 @@
 { "uri_query": "?MediaWiki.no_equals_value_multi&MediaWiki.foo=50c" }
 { "uri_query": "?MediaWiki.recover_after_invalid=60c&MediaWiki.quux=61ms" }
 { "uri_query": "?something_non_mediawiki_total:1|c%0Amediawiki_missing_total_suffix:1|c%0Amediawiki_after_bad_name_total:1|c" }
+{ "uri_query": "?mediawiki_example_total:|c", "@comment": "missing value for counter" }
+{ "uri_query": "?mediawiki_example_total:1|g", "@comment": "gauge unit for counter name" }
+{ "uri_query": "?mediawiki_example_total:1|ms", "@comment": "timing unit for counter name" }
 { "uri_query": "?mediawiki_example_total:1|c%0Amediawiki_example_total:42|c|%23key1:value1,key2:value2" }
 { "uri_query": "?mediawiki_foo_rows:200|g", "@comment": "legal gauge metric" }
 { "uri_query": "?mediawiki_foo_seconds:200|ms", "@comment": "legal timing metric" }

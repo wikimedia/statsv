@@ -236,7 +236,7 @@ def process_queue(q):
                     # to prevent pollution, and avoid injecting other lines/instructions.
                     # No full grammar validation as Prometheus statsd_exporter already
                     # normalizes/discards for us as-needed.
-                    if re.match(r'^mediawiki_[A-Za-z0-9_]+_total:[A-Za-z0-9_|#:,]+$', dogstatsd_message):
+                    if re.match(r'^mediawiki_[A-Za-z0-9_]+_total:[0-9]+\|c(\|#[A-Za-z0-9_:,]+)?$', dogstatsd_message):
                         if dry_run:
                             logging.info(dogstatsd_message)
                         elif dogstatsd_addr:
