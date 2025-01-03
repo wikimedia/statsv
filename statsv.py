@@ -185,8 +185,17 @@ class Watchdog:
         self.sock.sendto(b'WATCHDOG=1', self.addr)
 
 
+def emit(sock, addr, payload):
+    if dry_run:
+        logging.info(payload)
+    else:
+        sock.sendto(payload.encode('utf-8'), addr)
+
+
 def process_queue(q):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # set up utilization tracking
+    dogstatsd_lines_handled = statsd_lines_handled = 0
     while 1:
         raw_data = q.get()
         try:
@@ -237,10 +246,8 @@ def process_queue(q):
                     # No full grammar validation as Prometheus statsd_exporter already
                     # normalizes/discards for us as-needed.
                     if re.match(r'^mediawiki_[A-Za-z0-9_]+_total:[0-9]+\|c(\|#[A-Za-z0-9_:,]+)?$', dogstatsd_message):
-                        if dry_run:
-                            logging.info(dogstatsd_message)
-                        elif dogstatsd_addr:
-                            sock.sendto(dogstatsd_message.encode('utf-8'), dogstatsd_addr)
+                        dogstatsd_lines_handled += 1
+                        emit(sock, dogstatsd_addr, dogstatsd_message)
                     else:
                         logging.debug('Discarded dogstatsd message: "%s"' % dogstatsd_message)
             else:
@@ -251,14 +258,21 @@ def process_queue(q):
                     assert metric_type in SUPPORTED_METRIC_TYPES
                     statsd_message = '%s:%s|%s' % (
                             metric_name, metric_value, metric_type)
-
-                    if dry_run:
-                        logging.info(statsd_message)
-                    else:
-                        sock.sendto(statsd_message.encode('utf-8'), statsd_addr)
+                    statsd_lines_handled += 1
+                    emit(sock, statsd_addr, statsd_message)
 
         except (AssertionError, AttributeError, KeyError):
             pass
+
+        # track lines handled
+        if dogstatsd_lines_handled > 0:
+            payload = f'statsv_messages_handled_total:{dogstatsd_lines_handled}|c|#format:dogstatsd'
+            emit(sock, dogstatsd_addr, payload)
+            dogstatsd_lines_handled = 0
+        if statsd_lines_handled > 0:
+            payload = f'statsv_messages_handled_total:{statsd_lines_handled}|c|#format:statsd'
+            emit(sock, dogstatsd_addr, payload)
+            statsd_lines_handled = 0
 
 
 def get_statsv_reader(args):
