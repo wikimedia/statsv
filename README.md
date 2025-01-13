@@ -16,3 +16,13 @@ To ease local debugging, you can start Statsv locally without Kafka. Use the `--
 $ tox -v
 $ .tox/testenv/bin/python statsv.py --dry-run --kafka-fixture statsv_test_fixture.txt
 ```
+
+## Deployment
+
+Currently configured as a scap deploy.
+```
+ssh <deployment host>
+cd /srv/deployment/statsv/statsv
+git pull --rebase
+scap deploy <task id or gerrit change id>
+```
