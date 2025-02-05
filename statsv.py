@@ -136,6 +136,9 @@ worker_count = args.workers
 
 SUPPORTED_METRIC_TYPES = ('c', 'g', 'ms')
 
+ACCEPTED_DOGSTATSD_COUNTER = r'^mediawiki_[A-Za-z0-9_]+_total:[0-9]+\|c(\|#[A-Za-z0-9_:,]+)?$'
+ACCEPTED_DOGSTATSD_TIMING = r'^mediawiki_[A-Za-z0-9_]+_seconds:[0-9]+\|ms(\|#[A-Za-z0-9_:,]+)?$'
+
 
 SOCK_CLOEXEC = getattr(socket, 'SOCK_CLOEXEC', 0x80000)
 
@@ -245,7 +248,10 @@ def process_queue(q):
                     # to prevent pollution, and avoid injecting other lines/instructions.
                     # No full grammar validation as Prometheus statsd_exporter already
                     # normalizes/discards for us as-needed.
-                    if re.match(r'^mediawiki_[A-Za-z0-9_]+_total:[0-9]+\|c(\|#[A-Za-z0-9_:,]+)?$', dogstatsd_message):
+                    if (
+                        re.match(ACCEPTED_DOGSTATSD_COUNTER, dogstatsd_message)
+                        or re.match(ACCEPTED_DOGSTATSD_TIMING, dogstatsd_message)
+                    ):
                         dogstatsd_lines_handled += 1
                         emit(sock, dogstatsd_addr, dogstatsd_message)
                     else:

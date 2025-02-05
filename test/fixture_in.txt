@@ -14,3 +14,6 @@
 { "uri_query": "?mediawiki_example_total:1|c%0Amediawiki_example_total:42|c|%23key1:value1,key2:value2" }
 { "uri_query": "?mediawiki_foo_rows:200|g", "@comment": "legal gauge metric" }
 { "uri_query": "?mediawiki_foo_seconds:200|ms", "@comment": "legal timing metric" }
+{ "uri_query": "?mediawiki_foo_seconds:|ms", "@comment": "missing value for timing" }
+{ "uri_query": "?mediawiki_foo_seconds:1|c", "@comment": "counter unit for timing name" }
+{ "uri_query": "?mediawiki_foo_seconds:200|ms|%23key1:value1,key2:value2%0Amediawiki_foo_total:1|c", "@comment": "batch with labeled timing and counter" }

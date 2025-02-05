@@ -23,7 +23,13 @@ mediawiki_example_total:1|c
 mediawiki_example_total:42|c|#key1:value1,key2:value2
 statsv_messages_handled_total:2|c|#format:dogstatsd
 Discarded dogstatsd message: "mediawiki_foo_rows:200|g"
-Discarded dogstatsd message: "mediawiki_foo_seconds:200|ms"
+mediawiki_foo_seconds:200|ms
+statsv_messages_handled_total:1|c|#format:dogstatsd
+Discarded dogstatsd message: "mediawiki_foo_seconds:|ms"
+Discarded dogstatsd message: "mediawiki_foo_seconds:1|c"
+mediawiki_foo_seconds:200|ms|#key1:value1,key2:value2
+mediawiki_foo_total:1|c
+statsv_messages_handled_total:2|c|#format:dogstatsd
 Reached end of fixture file.
 Caught exception, aborting.
 Traceback (most recent call last):
