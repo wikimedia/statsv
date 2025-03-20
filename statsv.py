@@ -99,6 +99,13 @@ ap.add_argument(
     default=60
 )
 ap.add_argument(
+    '--socket-timeout-seconds',
+    help='Timeout for all socket instances. '
+         'Default: 0.5',
+    type=float,
+    default=0.5
+)
+ap.add_argument(
     '--dry-run',
     help='If true, nothing will be sent to statsd. '
     'Instead, each statsd output line is logged at the INFO level. Default: False',
@@ -118,6 +125,9 @@ logging.basicConfig(stream=sys.stderr, level=args.log_level,
                     format='%(asctime)s %(message)s')
 # Set kafka module logging level to INFO
 logging.getLogger("kafka").setLevel(logging.INFO)
+
+# T389469 - assign a timeout for all new sockets created so the process doesn't hang indefinitely
+socket.setdefaulttimeout(args.socket_timeout_seconds)
 
 dry_run = args.dry_run
 
@@ -193,7 +203,13 @@ def emit(sock, addr, payload):
     if dry_run:
         logging.info(payload)
     else:
-        sock.sendto(payload.encode('utf-8'), addr)
+        try:
+            sock.sendto(payload.encode('utf-8'), addr)
+        except socket.gaierror:
+            # log the target name
+            target = ':'.join(addr)  # convert tuple back to <host>:<port>
+            logging.error(f"socket.gaierror - Name or service not known: '{target}'")
+        # not catching socket.timeout here to allow process to exit and systemd to restart it
 
 
 def process_queue(q):
