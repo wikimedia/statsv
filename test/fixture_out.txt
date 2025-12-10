@@ -30,6 +30,13 @@ Discarded dogstatsd message: "mediawiki_foo_seconds:1|c"
 mediawiki_foo_seconds:200|ms|#key1:value1,key2:value2
 mediawiki_foo_total:1|c
 statsv_messages_handled_total:2|c|#format:dogstatsd
+mediawiki_foo_bar_distribution_bucket:0|c|#kind:main,le:-1
+mediawiki_foo_bar_distribution_bucket:0|c|#kind:main,le:0.3
+mediawiki_foo_bar_distribution_bucket:1|c|#kind:main,le:3
+mediawiki_foo_bar_distribution_bucket:1|c|#kind:main,le:+Inf
+mediawiki_foo_bar_distribution_count:1|c|#kind:main
+mediawiki_foo_bar_distribution_sum:3|c|#kind:main
+statsv_messages_handled_total:6|c|#format:dogstatsd
 Reached end of fixture file.
 Caught exception, aborting.
 Traceback (most recent call last):

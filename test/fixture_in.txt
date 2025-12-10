@@ -17,3 +17,4 @@
 { "uri_query": "?mediawiki_foo_seconds:|ms", "@comment": "missing value for timing" }
 { "uri_query": "?mediawiki_foo_seconds:1|c", "@comment": "counter unit for timing name" }
 { "uri_query": "?mediawiki_foo_seconds:200|ms|%23key1:value1,key2:value2%0Amediawiki_foo_total:1|c", "@comment": "batch with labeled timing and counter" }
+{ "uri_query": "?mediawiki_foo_bar_distribution_bucket:0|c%7C%23kind:main,le:-1%0Amediawiki_foo_bar_distribution_bucket:0|c%7C%23kind:main,le:0.3%0Amediawiki_foo_bar_distribution_bucket:1|c%7C%23kind:main,le:3%0Amediawiki_foo_bar_distribution_bucket:1|c%7C%23kind:main,le:+Inf%0Amediawiki_foo_bar_distribution_count:1|c%7C%23kind:main%0Amediawiki_foo_bar_distribution_sum:3|c%7C%23kind:main", "@comment": "valid histogram" }
