@@ -207,7 +207,7 @@ def emit(sock, addr, payload):
             sock.sendto(payload.encode('utf-8'), addr)
         except socket.gaierror:
             # log the target name
-            target = ':'.join(addr)  # convert tuple back to <host>:<port>
+            target = ':'.join([str(x) for x in addr])  # convert tuple back to <host>:<port>
             logging.error(f"socket.gaierror - Name or service not known: '{target}'")
         # not catching socket.timeout here to allow process to exit and systemd to restart it
 
