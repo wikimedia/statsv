@@ -37,6 +37,18 @@ mediawiki_foo_bar_distribution_bucket:1|c|#kind:main,le:+Inf
 mediawiki_foo_bar_distribution_count:1|c|#kind:main
 mediawiki_foo_bar_distribution_sum:3|c|#kind:main
 statsv_messages_handled_total:6|c|#format:dogstatsd
+mediawiki_foo_total:1|c|#wiki:enwiki,rule:LLM-user-comms
+mediawiki_foo_seconds:5|ms|#version:1.47.0,mode:a+b
+statsv_messages_handled_total:2|c|#format:dogstatsd
+Discarded dogstatsd message: "mediawiki_foo_total:1|c|#rule:a/b"
+Discarded dogstatsd message: "mediawiki_foo_total:1|c|#rule:a b"
+Discarded dogstatsd message: "mediawiki_foo_total:1|c|#ke-y:v"
+Discarded dogstatsd message: "mediawiki_foo_total:1|c|#a.b:v"
+Discarded dogstatsd message: "mediawiki_foo_seconds:5|ms|#a+b:v"
+Discarded dogstatsd message: "mediawiki_foo_bar_distribution_count:1|c|#ki-nd:main"
+Discarded dogstatsd message: "mediawiki_foo_total:1|c|#novalue"
+Discarded dogstatsd message: "mediawiki_foo_total:1|c|#key:"
+Discarded dogstatsd message: "mediawiki_foo_total:1|c|#key:a:b"
 Reached end of fixture file.
 Caught exception, aborting.
 Traceback (most recent call last):

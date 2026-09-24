@@ -146,10 +146,12 @@ worker_count = args.workers
 
 SUPPORTED_METRIC_TYPES = ('c', 'g', 'ms')
 
-ACCEPTED_DOGSTATSD_COUNTER = r'^mediawiki_[A-Za-z0-9_]+_total:[0-9]+\|c(\|#[A-Za-z0-9_:,]+)?$'
-ACCEPTED_DOGSTATSD_TIMING = r'^mediawiki_[A-Za-z0-9_]+_seconds:[0-9]+\|ms(\|#[A-Za-z0-9_:,]+)?$'
+DOGSTATSD_TAG = r'[A-Za-z0-9_]+:[A-Za-z0-9_.+-]+'
+DOGSTATSD_TAGS = r'(\|#' + DOGSTATSD_TAG + r'(,' + DOGSTATSD_TAG + r')*)?'
+ACCEPTED_DOGSTATSD_COUNTER = r'^mediawiki_[A-Za-z0-9_]+_total:[0-9]+\|c' + DOGSTATSD_TAGS + r'$'
+ACCEPTED_DOGSTATSD_TIMING = r'^mediawiki_[A-Za-z0-9_]+_seconds:[0-9]+\|ms' + DOGSTATSD_TAGS + r'$'
 ACCEPTED_DOGSTATSD_HISTOGRAM = \
-    r'^mediawiki_[A-Za-z0-9_]+_distribution_(bucket|count|sum):-?[0-9]+\|c(\|#[A-Za-z0-9_:,.+-]+)?$'
+    r'^mediawiki_[A-Za-z0-9_]+_distribution_(bucket|count|sum):-?[0-9]+\|c' + DOGSTATSD_TAGS + r'$'
 
 SOCK_CLOEXEC = getattr(socket, 'SOCK_CLOEXEC', 0x80000)
 
@@ -228,6 +230,7 @@ def process_queue(q):
             #
             # This only allows metrics in the  `mediawiki_` namespace, and strictly requires
             # valid metric/label names per the Prometheus/OpenMetrics spec (A-Z, a-z, 0-9, _).
+            # Label values can also contain `.`, `+` and `-`, which statsd.js allows.
             #
             # * https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format
             # * https://github.com/prometheus/OpenMetrics/blob/v1.0.0/specification/OpenMetrics.md#abnf
