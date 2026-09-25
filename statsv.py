@@ -268,7 +268,7 @@ def process_queue(q):
                     # to prevent pollution, and avoid injecting other lines/instructions.
                     # No full grammar validation as Prometheus statsd_exporter already
                     # normalizes/discards for us as-needed.
-                    if (
+                    if len(dogstatsd_message) <= 5000 and (
                         re.match(ACCEPTED_DOGSTATSD_COUNTER, dogstatsd_message)
                         or re.match(ACCEPTED_DOGSTATSD_TIMING, dogstatsd_message)
                         or re.match(ACCEPTED_DOGSTATSD_HISTOGRAM, dogstatsd_message)
